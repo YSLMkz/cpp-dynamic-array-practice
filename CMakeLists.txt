@@ -5,9 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Шаблонный класс полностью реализован в include/DynamicArray.h,
+# поэтому компилируется только main.cpp.
 add_executable(main
     src/main.cpp
-    src/DynamicArray.cpp
 )
 target_include_directories(main PRIVATE include)
 

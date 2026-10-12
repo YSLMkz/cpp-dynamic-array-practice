@@ -1,0 +1,14 @@
+# Сборка
+build/
+cmake-build-*/
+/main
+/main_asan
+*.exe
+*.o
+*.obj
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store

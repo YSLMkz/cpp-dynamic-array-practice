@@ -1,6 +1,9 @@
 #include "../include/DynamicArray.h"
 
 #include <iostream>
+#include <limits>
+#include <new>
+#include <stdexcept>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -11,8 +14,24 @@ static void printTitle(const char* title) {
     std::cout << "\n===== " << title << " =====\n";
 }
 
-static void report(bool ok) {
-    std::cout << "  -> " << (ok ? "ok" : "отклонено") << '\n';
+// Выполняет действие и показывает, какое именно исключение было поймано.
+// Обработчики идут от конкретных типов к общему: если бы класс бросал
+// «не тот» тип, сработал бы последний catch и это было бы видно в выводе.
+template <typename Action>
+static void attempt(const char* description, Action action) {
+    std::cout << description << '\n';
+    try {
+        action();
+        std::cout << "  -> выполнено без исключений\n";
+    } catch (const std::out_of_range& e) {
+        std::cout << "  -> поймано std::out_of_range: " << e.what() << '\n';
+    } catch (const std::invalid_argument& e) {
+        std::cout << "  -> поймано std::invalid_argument: " << e.what() << '\n';
+    } catch (const std::bad_alloc& e) {
+        std::cout << "  -> поймано std::bad_alloc: " << e.what() << '\n';
+    } catch (const std::exception& e) {
+        std::cout << "  -> поймано другое исключение (не ожидалось!): " << e.what() << '\n';
+    }
 }
 
 int main() {
@@ -21,115 +40,91 @@ int main() {
 #endif
 
     // ---------------------------------------------------------------
-    printTitle("Задание 1: конструктор, сеттер, геттер, вывод");
+    printTitle("Функции из части 1 (без ошибок)");
 
     DynamicArray arr(5);
-    std::cout << "Новый массив из 5 элементов: ";
-    arr.print();
-
     for (std::size_t i = 0; i < arr.size(); ++i) {
-        arr.set(i, static_cast<int>(i) * 10); // 0, 10, 20, 30, 40
+        arr.set(i, static_cast<int>(i) * 10);
     }
-    std::cout << "После set(i, i*10): ";
+    std::cout << "arr = ";
     arr.print();
-
-    std::cout << "get(2) = " << arr.get(2) << '\n';
-
-    std::cout << "\nПроверки сеттера и геттера:\n";
-    std::cout << "set(10, 5) — индекс за границей:\n";
-    report(arr.set(10, 5));
-    std::cout << "set(0, 150) — значение больше 100:\n";
-    report(arr.set(0, 150));
-    std::cout << "set(0, -101) — значение меньше -100:\n";
-    report(arr.set(0, -101));
-    std::cout << "set(0, -100) — граница промежутка, допустимо:\n";
-    report(arr.set(0, -100));
-    std::cout << "set(1, 100) — граница промежутка, допустимо:\n";
-    report(arr.set(1, 100));
-    std::cout << "get(7) — индекс за границей:\n";
-    const int value = arr.get(7);
-    std::cout << "  -> get вернул " << value << '\n';
-    std::cout << "Массив после проверок: ";
-    arr.print();
-
-    // ---------------------------------------------------------------
-    printTitle("Задание 2: конструктор копирования");
+    std::cout << "arr.get(3) = " << arr.get(3) << '\n';
 
     DynamicArray copy(arr);
-    std::cout << "Копия:    ";
+    copy.set(0, -7);
+    std::cout << "copy (после copy.set(0, -7)) = ";
     copy.print();
-
-    copy.set(0, 77);
-    std::cout << "После copy.set(0, 77):\n";
-    std::cout << "Копия:    ";
-    copy.print();
-    std::cout << "Оригинал: ";
+    std::cout << "arr  (не изменился)          = ";
     arr.print();
-    std::cout << "Оригинал не изменился — у копии своя память (глубокое копирование).\n";
 
-    // ---------------------------------------------------------------
-    printTitle("Задание 3: добавление в конец с расширением");
+    arr.pushBack(55);
+    std::cout << "arr.pushBack(55) -> arr = ";
+    arr.print();
 
-    DynamicArray grow(0);
-    std::cout << "Пустой массив, size = " << grow.size() << ": ";
-    grow.print();
-
-    grow.pushBack(1);
-    grow.pushBack(-50);
-    grow.pushBack(99);
-    std::cout << "После pushBack(1), pushBack(-50), pushBack(99), size = " << grow.size() << ": ";
-    grow.print();
-
-    std::cout << "pushBack(200) — значение вне промежутка:\n";
-    report(grow.pushBack(200));
-    std::cout << "Массив не изменился, size = " << grow.size() << ": ";
-    grow.print();
-
-    // ---------------------------------------------------------------
-    printTitle("Задание 4: сложение и вычитание массивов");
-
-    DynamicArray a(4);
-    a.set(0, 1);
-    a.set(1, 2);
-    a.set(2, 3);
-    a.set(3, 4);
-
-    DynamicArray b(2); // короче, чем a: недостающие элементы считаются нулями
-    b.set(0, 10);
-    b.set(1, 20);
-
-    std::cout << "a = ";
-    a.print();
+    DynamicArray b(2);
+    b.set(0, 1);
+    b.set(1, 2);
     std::cout << "b = ";
     b.print();
+    arr.add(b);
+    std::cout << "arr.add(b) -> arr = ";
+    arr.print();
+    arr.sub(b);
+    std::cout << "arr.sub(b) -> arr = ";
+    arr.print();
 
-    a.add(b);
-    std::cout << "a.add(b) -> a = ";
-    a.print();
+    // ---------------------------------------------------------------
+    printTitle("std::out_of_range — индекс вне границ");
 
-    a.sub(b);
-    std::cout << "a.sub(b) -> a = ";
-    a.print();
+    attempt("arr.get(10)", [&] { arr.get(10); });
+    attempt("arr.set(6, 1)", [&] { arr.set(6, 1); });
+    attempt("arr.get(-1)  (−1 превращается в огромный size_t)", [&] { arr.get(static_cast<std::size_t>(-1)); });
 
-    DynamicArray c(6); // длиннее, чем a: лишние элементы c игнорируются
-    for (std::size_t i = 0; i < c.size(); ++i) {
-        c.set(i, 5);
-    }
-    std::cout << "c = ";
-    c.print();
-    a.add(c);
-    std::cout << "a.add(c) -> a = ";
-    a.print();
-    std::cout << "Размер a не изменился: " << a.size() << '\n';
+    // ---------------------------------------------------------------
+    printTitle("std::invalid_argument — значение вне −100…100");
 
-    DynamicArray big(1);
-    big.set(0, 100);
-    std::cout << "\nbig = ";
-    big.print();
-    std::cout << "big.add(big) — результат 200 вышел бы за промежуток:\n";
-    report(big.add(big));
+    attempt("arr.set(0, 150)", [&] { arr.set(0, 150); });
+    attempt("arr.set(0, -101)", [&] { arr.set(0, -101); });
+    attempt("arr.pushBack(1000)", [&] { arr.pushBack(1000); });
+
+    DynamicArray big(2);
+    big.set(0, 90);
+    big.set(1, -90);
     std::cout << "big = ";
     big.print();
+    attempt("big.add(big)  (90 + 90 = 180)", [&] { big.add(big); });
+    attempt("big.sub(arr)  (90 - 0 = 90; -90 - 10 = -100 — граница, допустимо)", [&] { big.sub(arr); });
+
+    std::cout << "После всех ошибок массивы не испорчены:\n";
+    std::cout << "arr = ";
+    arr.print();
+    std::cout << "big = ";
+    big.print();
+
+    // ---------------------------------------------------------------
+    printTitle("std::bad_alloc — не удалось выделить память");
+
+    // Запрашиваем блок в половину PTRDIFF_MAX байт (~4 эксабайта на 64-битной системе):
+    // формально размер допустимый, но столько памяти нет ни у одной машины,
+    // поэтому allocate() получает nullptr и сам бросает std::bad_alloc.
+    const std::size_t hugeSize =
+        static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / sizeof(int) / 2;
+    std::cout << "Пытаемся создать массив из " << hugeSize << " элементов\n";
+    attempt("DynamicArray huge(hugeSize)", [&] {
+        DynamicArray huge(hugeSize);
+        std::cout << "  huge.size() = " << huge.size() << '\n';
+    });
+
+    // ---------------------------------------------------------------
+    printTitle("Корректные граничные значения не бросают исключений");
+
+    attempt("arr.set(0, -100); arr.set(1, 100); arr.get(5)", [&] {
+        arr.set(0, -100);
+        arr.set(1, 100);
+        std::cout << "  arr.get(5) = " << arr.get(5) << '\n';
+    });
+    std::cout << "arr = ";
+    arr.print();
 
     return 0;
 }

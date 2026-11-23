@@ -12,7 +12,7 @@
 #include <string>
 #include <type_traits> // std::is_integral_v, std::is_arithmetic_v, std::is_signed_v
 #include <typeinfo>    // std::bad_typeid
-#include <utility>     // std::swap
+#include <utility>     // std::exchange, std::swap
 
 // Шаблонный динамический массив элементов типа T.
 //
@@ -42,8 +42,9 @@ public:
     // Конструктор копирования (глубокое копирование данных).
     DynamicArray(const DynamicArray& other);
 
-    // Оператор присваивания реализуется в части 5 (правило трёх/пяти).
-    DynamicArray& operator=(const DynamicArray& other) = delete;
+    DynamicArray& operator=(const DynamicArray& other);
+    DynamicArray(DynamicArray&& other) noexcept;
+    DynamicArray& operator=(DynamicArray&& other) noexcept;
 
     std::size_t size() const;
 
@@ -201,6 +202,33 @@ template <typename T>
 DynamicArray<T>::DynamicArray(const DynamicArray& other)
     : data_(copyOf(other.data_, other.size_, other.size_)),
       size_(other.size_) {
+}
+
+template <typename T>
+DynamicArray<T>& DynamicArray<T>::operator=(const DynamicArray& other) {
+    if (this != &other) {
+        T* copy = copyOf(other.data_, other.size_, other.size_);
+        delete[] data_;
+        data_ = copy;
+        size_ = other.size_;
+    }
+    return *this;
+}
+
+template <typename T>
+DynamicArray<T>::DynamicArray(DynamicArray&& other) noexcept
+    : data_(std::exchange(other.data_, nullptr)),
+      size_(std::exchange(other.size_, 0)) {
+}
+
+template <typename T>
+DynamicArray<T>& DynamicArray<T>::operator=(DynamicArray&& other) noexcept {
+    if (this != &other) {
+        delete[] data_;
+        data_ = std::exchange(other.data_, nullptr);
+        size_ = std::exchange(other.size_, 0);
+    }
+    return *this;
 }
 
 template <typename T>

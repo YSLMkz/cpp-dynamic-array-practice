@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <typeinfo>
+#include <utility>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -46,6 +47,11 @@ static void append(DynamicArray<T>& array, std::initializer_list<T> values) {
     for (const T& value : values) {
         array.pushBack(value);
     }
+}
+
+static void showByValue(DynamicArray<int> values, const int* originalData) {
+    std::cout << "В функции массив " << values << ". Блок памяти "
+              << (values.begin() == originalData ? "передан" : "скопирован") << '\n';
 }
 
 int main() {
@@ -192,5 +198,25 @@ int main() {
         std::cout << ' ' << score;
     }
     std::cout << '\n';
+
+    printTitle("Часть 5. Копирование и перемещение");
+    DynamicArray<int> source(0);
+    append(source, {7, 8});
+    DynamicArray<int> first(1), second(0);
+    first = second = source;
+    first[0] = 42;
+    std::cout << "После копирования: " << first << ", " << second
+              << ", исходный массив " << source << '\n';
+
+    const int* storage = source.begin();
+    std::cout << "Передача по значению из " << source << '\n';
+    showByValue(source, storage);
+    std::cout << "После копирования источник: " << source << '\n';
+    showByValue(std::move(source), storage);
+    std::cout << "После перемещения источник: " << source << '\n';
+
+    first = std::move(second);
+    std::cout << "После перемещающего присваивания: " << first
+              << ", источник " << second << '\n';
     return 0;
 }

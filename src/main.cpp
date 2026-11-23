@@ -163,5 +163,34 @@ int main() {
         std::cout << "  huge.size() = " << huge.size() << '\n';
     });
 
+    printTitle("Часть 4. Операторы и итераторы");
+    DynamicArray<int> scores(3);
+    scores[0] = 80;
+    scores[1] = scores[0];
+    scores[2] = 4;
+    const DynamicArray<int>& view = scores;
+    std::cout << "Первый элемент = " << view[0] << '\n';
+    attempt("scores[3]", [&] { (void)scores[3]; });
+    attempt("scores[0] = 101", [&] { scores[0] = 101; });
+
+    DynamicArray<int> original(scores);
+    DynamicArray<int> bonus(1);
+    bonus[0] = 50;
+    scores += bonus;
+    std::cout << "После += [50] получаем " << scores
+              << ", scores != original: " << (scores != original) << '\n';
+    scores -= bonus;
+    std::cout << "После -= [50] scores == original: " << (scores == original) << '\n';
+    (scores += 3) -= 1;
+    std::cout << "После += 3 и -= 1 получаем " << scores << '\n';
+
+    for (auto& score : scores) {
+        ++score;
+    }
+    std::cout << "После обхода с изменением:";
+    for (const auto& score : view) {
+        std::cout << ' ' << score;
+    }
+    std::cout << '\n';
     return 0;
 }

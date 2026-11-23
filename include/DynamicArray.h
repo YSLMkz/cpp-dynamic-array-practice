@@ -1,6 +1,7 @@
 #ifndef DYNAMIC_ARRAY_H
 #define DYNAMIC_ARRAY_H
 
+#include <algorithm>   // std::min
 #include <cmath>       // std::hypot
 #include <cstddef>     // std::size_t
 #include <cstdint>     // std::uintmax_t
@@ -52,6 +53,45 @@ public:
     // Геттер: проверка индекса.
     const T& get(std::size_t index) const;
 
+    // Ссылка для записи в целочисленный массив: arr[i] = x вызывает set().
+    class ElementReference {
+        friend class DynamicArray;
+        DynamicArray& array_;
+        std::size_t index_;
+
+        ElementReference(DynamicArray& array, std::size_t index)
+            : array_(array), index_(index) {}
+
+    public:
+        operator const T&() const { return array_.get(index_); }
+
+        ElementReference& operator=(const T& value) {
+            array_.set(index_, value);
+            return *this;
+        }
+
+        ElementReference& operator=(const ElementReference& other) {
+            return *this = static_cast<const T&>(other);
+        }
+    };
+
+    using reference = std::conditional_t<std::is_integral_v<T>, ElementReference, T&>;
+    reference operator[](std::size_t index);
+    const T& operator[](std::size_t index) const { return get(index); }
+
+    bool operator==(const DynamicArray& other) const;
+    bool operator!=(const DynamicArray& other) const { return !(*this == other); }
+
+    DynamicArray& operator+=(const DynamicArray& other);
+    DynamicArray& operator-=(const DynamicArray& other);
+    DynamicArray& operator+=(const T& value);
+    DynamicArray& operator-=(const T& value);
+
+    T* begin() noexcept { return data_; }
+    T* end() noexcept { return size_ ? data_ + size_ : data_; }
+    const T* begin() const noexcept { return data_; }
+    const T* end() const noexcept { return size_ ? data_ + size_ : data_; }
+
     // Вывод всех значений массива (через operator<<).
     void print() const;
 
@@ -87,9 +127,9 @@ private:
 
     void checkIndex(std::size_t index, const char* operationName) const;
 
-    // Общая реализация add/sub.
+    // Результаты записываются в копию и применяются после успешного расчёта.
     template <typename Operation>
-    void combine(const DynamicArray& other, Operation operation);
+    void transformPrefix(std::size_t count, Operation operation);
     static T addValues(const T& a, const T& b);
     static T subValues(const T& a, const T& b);
 };
@@ -211,6 +251,29 @@ const T& DynamicArray<T>::get(std::size_t index) const {
 }
 
 template <typename T>
+typename DynamicArray<T>::reference DynamicArray<T>::operator[](std::size_t index) {
+    checkIndex(index, "operator[]");
+    if constexpr (std::is_integral_v<T>) {
+        return ElementReference(*this, index);
+    } else {
+        return data_[index];
+    }
+}
+
+template <typename T>
+bool DynamicArray<T>::operator==(const DynamicArray& other) const {
+    if (size_ != other.size_) {
+        return false;
+    }
+    for (std::size_t i = 0; i < size_; ++i) {
+        if (!(data_[i] == other.data_[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename T>
 void DynamicArray<T>::print() const {
     std::cout << *this << '\n';
 }
@@ -234,10 +297,13 @@ void DynamicArray<T>::pushBack(const T& value) {
 
 template <typename T>
 template <typename Operation>
-void DynamicArray<T>::combine(const DynamicArray& other, Operation operation) {
+void DynamicArray<T>::transformPrefix(std::size_t count, Operation operation) {
+    if (count == 0) {
+        return;
+    }
     DynamicArray result(*this);
-    for (std::size_t i = 0; i < size_ && i < other.size_; ++i) {
-        result.data_[i] = operation(data_[i], other.data_[i]);
+    for (std::size_t i = 0; i < count; ++i) {
+        result.data_[i] = operation(i);
     }
     std::swap(data_, result.data_);
 }
@@ -266,12 +332,40 @@ T DynamicArray<T>::subValues(const T& a, const T& b) {
 
 template <typename T>
 void DynamicArray<T>::add(const DynamicArray& other) {
-    combine(other, addValues);
+    *this += other;
 }
 
 template <typename T>
 void DynamicArray<T>::sub(const DynamicArray& other) {
-    combine(other, subValues);
+    *this -= other;
+}
+
+template <typename T>
+DynamicArray<T>& DynamicArray<T>::operator+=(const DynamicArray& other) {
+    transformPrefix(std::min(size_, other.size_), [&](std::size_t i) {
+        return addValues(data_[i], other.data_[i]);
+    });
+    return *this;
+}
+
+template <typename T>
+DynamicArray<T>& DynamicArray<T>::operator-=(const DynamicArray& other) {
+    transformPrefix(std::min(size_, other.size_), [&](std::size_t i) {
+        return subValues(data_[i], other.data_[i]);
+    });
+    return *this;
+}
+
+template <typename T>
+DynamicArray<T>& DynamicArray<T>::operator+=(const T& value) {
+    transformPrefix(size_, [&](std::size_t i) { return addValues(data_[i], value); });
+    return *this;
+}
+
+template <typename T>
+DynamicArray<T>& DynamicArray<T>::operator-=(const T& value) {
+    transformPrefix(size_, [&](std::size_t i) { return subValues(data_[i], value); });
+    return *this;
 }
 
 template <typename T>

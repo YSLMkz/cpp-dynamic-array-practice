@@ -2,7 +2,7 @@ name: C++ memory checks
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, part5-rule-of-five]
 
 permissions:
   contents: read

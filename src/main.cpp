@@ -10,7 +10,9 @@
 #include <typeinfo>
 
 #ifdef _WIN32
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #endif
 
@@ -103,8 +105,8 @@ int main() {
     std::cout << "a.add(b) -> a = " << a << '\n';
     a.sub(b);
     std::cout << "a.sub(b) -> a = " << a << '\n';
-    attempt("ints.add(ints)  (-100 + (-100) = -200)", [&] { ints.add(ints); });
-    std::cout << "ints не изменился: " << ints << '\n';
+    ints.add(ints);
+    std::cout << "ints.add(ints) = " << ints << '\n'; // [-200, 84, 200]
 
     DynamicArray<double> d1(0);
     append(d1, {0.5, 1.5});
